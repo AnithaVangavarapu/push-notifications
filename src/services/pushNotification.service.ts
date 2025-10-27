@@ -1,4 +1,19 @@
-import apn from "apn";
+import admin from "firebase-admin";
+import path from "path";
+
+//Initialize Firebase admin once
+if (!admin.apps.length) {
+  const serviceAccountPath = path.join(
+    __dirname,
+    "../../firebase_json/clinion-dy-epro-firebase-adminsdk-fbsvc-78e3163da2.json"
+  );
+  const serviceAccount = require(serviceAccountPath);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log("Firebase initialized successfully");
+}
+
 interface PushNotificationProps {
   deviceToken: string;
   title: string;
@@ -9,45 +24,23 @@ export const pushNotification = async ({
   title,
   bodyContent,
 }: PushNotificationProps) => {
-  //APNs provider options
-  const options = {
-    pfx: process.env.APNS_P12_PATH!, //Path to p12 file
-    passphrase: process.env.APNS_P12_PASSPHRASE!, //Password for p12 file
-    production: process.env.APNS_PRODUCTION === "true",
-  };
-
-  const apnProvider = new apn.Provider(options);
-
-  //Build notification
-
-  const notification = new apn.Notification({
-    alert: {
-      title,
-      body: bodyContent,
-    },
-    sound: "default",
-    topic: process.env.APNS_BUNDLE_ID,
-  });
   try {
-    const result = await apnProvider.send(notification, deviceToken);
-    console.log("APNs Result:", result);
-    apnProvider.shutdown();
-    if (result.failed.length > 0) {
-      return {
-        success: false,
-        error: {
-          code: 500,
-          message:
-            result.failed[0].response?.reason || "Failed to send notification",
-        },
-      };
-    }
+    const message = {
+      token: deviceToken,
+      notification: {
+        title,
+        body: bodyContent,
+      },
+    };
+    const result = await admin.messaging().send(message);
+    console.log("Notification Result:", result);
+
     return {
       success: true,
     };
   } catch (error) {
-    console.log("Failed to send apns notification:", error);
-    apnProvider.shutdown();
+    console.log("Failed to send  notification:", error);
+
     return {
       success: false,
       error: {

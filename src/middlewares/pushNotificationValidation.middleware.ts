@@ -16,6 +16,11 @@ export const pushNotificationValidation = async (
   next: NextFunction
 ) => {
   try {
+    if (!req.body) {
+      return res.status(400).json({
+        message: "Request body not provided",
+      });
+    }
     const value = await pushNotification.validateAsync(req.body, {
       abortEarly: false,
     });
